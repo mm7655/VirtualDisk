@@ -34,26 +34,21 @@ int process_page_access_fifo(struct PTE page_table[TABLEMAX], int *table_cnt, in
 int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int reference_string[REFERENCEMAX], int reference_cnt, int frame_pool[POOLMAX], int frame_cnt) {
     int faults = 0;
     int timestamp = 1;
-    int current_table_cnt = 0; 
+    int current_table_cnt = 0;
 
-    // Determine the number of initially valid pages
+    // Check how many pages are already loaded in the page table and adjust the fault count
+    int initiallyLoadedPages = 0;
     for (int i = 0; i < table_cnt; i++) {
         if (page_table[i].is_valid) {
-            current_table_cnt++; 
+            initiallyLoadedPages++;
+            current_table_cnt++; // Track the number of valid pages
         }
     }
-
-    // Calculate and adjust the initial fault count
-    int initial_faults = current_table_cnt - frame_cnt; // Frames needed - available frames
-    if (initial_faults < 0) { // Handle cases where the test harness might overallocate frames
-        initial_faults = 0;
-    }
-    faults += initial_faults;
+    faults = initiallyLoadedPages; // Start with the number of initially loaded pages as faults
 
     for (int i = 0; i < reference_cnt; i++) {
         int page_number = reference_string[i];
 
-        // Mark pages already in memory as referenced
         int pageFound = 0;
         for (int j = 0; j < current_table_cnt; j++) {
             if (page_table[j].is_valid && page_table[j].frame_number == page_number) {
@@ -65,8 +60,9 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
         }
 
         if (!pageFound) {
-            faults++; 
-        
+            // Additional fault due to the new page not being in memory
+            faults++; // Increment only for additional faults beyond the initial ones
+            
             if (frame_cnt > 0) {
                 // Free frame available
                 int frame = frame_pool[--frame_cnt];
@@ -87,9 +83,9 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
         }
         timestamp++;
     }
+
     return faults;
 }
-
 
 
 
