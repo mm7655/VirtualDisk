@@ -12,8 +12,14 @@ int process_page_access_fifo(struct PTE page_table[TABLEMAX], int *table_cnt, in
 
     if (*frame_cnt > 0) {
         int frame = frame_pool[--(*frame_cnt)];
-        page_table[page_number] = (struct PTE){1, frame, current_timestamp, current_timestamp, 1};
-        return frame;
+        // Update existing page table entry instead of the page number itself
+        for (int i = 0; i < TABLEMAX; i++) {
+            if (!page_table[i].is_valid) {
+                page_table[i] = (struct PTE){1, frame, current_timestamp, current_timestamp, 1};
+                (*table_cnt)++; // Increase the number of valid pages
+                return frame;
+            }
+        }
     } else {
         // No free frame, replace the oldest page (FIFO)
         int replaceIndex = -1;
