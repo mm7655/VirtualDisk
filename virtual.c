@@ -34,13 +34,22 @@ int process_page_access_fifo(struct PTE page_table[TABLEMAX], int *table_cnt, in
 int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int reference_string[REFERENCEMAX], int reference_cnt, int frame_pool[POOLMAX], int frame_cnt) {
     int faults = 0;
     int timestamp = 1;
-    int current_table_cnt = 0; // Start from 0, increment only when adding new pages
+    int current_table_cnt = 0;
+
+    // Count initial faults for pages already in memory
+    for (int i = 0; i < table_cnt; i++) {
+        if (page_table[i].is_valid) {
+            faults++; // Count as initial fault
+            current_table_cnt++; // Increment valid page count
+            page_table[i].arrival_timestamp = timestamp++; // Update arrival timestamp
+        }
+    }
 
     for (int i = 0; i < reference_cnt; i++) {
         int page_number = reference_string[i];
 
         // Mark pages already in memory as referenced
-        int pageFound = 0; 
+        int pageFound = 0;
         for (int j = 0; j < current_table_cnt; j++) {
             if (page_table[j].is_valid && page_table[j].frame_number == page_number) {
                 page_table[j].last_access_timestamp = timestamp;
@@ -49,9 +58,10 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
                 break;
             }
         }
+
         if (pageFound == 1) {
             timestamp++;
-            continue;
+            continue; // No fault if page found
         }
 
         // Page not in memory, handle page fault
@@ -59,7 +69,6 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
             // Free frame available
             int frame = frame_pool[--frame_cnt];
             page_table[current_table_cnt++] = (struct PTE){1, frame, timestamp, timestamp, 1};
-            faults++;
         } else {
             // No free frame, replace oldest
             int replaceIndex = 0;
@@ -68,14 +77,12 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
                     replaceIndex = j;
                 }
             }
-
-            // Correct the replacement logic for page_table array indexes
             page_table[replaceIndex].frame_number = page_number;
             page_table[replaceIndex].arrival_timestamp = timestamp;
             page_table[replaceIndex].last_access_timestamp = timestamp;
             page_table[replaceIndex].reference_count = 1;
-            faults++;
         }
+        faults++; // Count the fault (regardless of free frame or replacement)
         timestamp++;
     }
 
