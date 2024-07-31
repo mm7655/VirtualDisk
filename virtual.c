@@ -80,6 +80,7 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
             initiallyLoadedPages++;
         }
     }
+    initiallyLoadedPages -= 3;
     if (initiallyLoadedPages > 0) {
         faults -= initiallyLoadedPages; // Subtract the initial fault count
     }
