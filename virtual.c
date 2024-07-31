@@ -36,7 +36,7 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
     int timestamp = 1;
     int current_table_cnt = 0; 
 
-    // Queue to track the order of pages loaded into frames
+    // Queue to track the order of pages loaded into frames (using indices in page_table)
     int frameQueue[POOLMAX]; 
     int front = 0, rear = -1;
 
@@ -44,7 +44,7 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
         int page_number = reference_string[i];
 
         int pageFound = 0;
-        for (int j = 0; j < table_cnt; j++) { // Search the whole table
+        for (int j = 0; j < table_cnt; j++) { 
             if (page_table[j].is_valid && page_table[j].frame_number == page_number) {
                 page_table[j].last_access_timestamp = timestamp;
                 page_table[j].reference_count++;
@@ -56,37 +56,25 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
         if (!pageFound) {
             faults++; 
 
-            if (frame_cnt > 0 || current_table_cnt < table_cnt) { 
-                // Free frame available or still empty slots in the page table
-                
-                // Load page into the next available frame or page table slot
-                if (frame_cnt > 0) {
-                    int frame = frame_pool[--frame_cnt];
-                    page_table[current_table_cnt].is_valid = 1;
-                    page_table[current_table_cnt].frame_number = frame;
-                    frameQueue[++rear] = current_table_cnt; // Add to frame queue using index
-                } else {
-                    // No frame, but there's an empty slot in the page table
-                    page_table[current_table_cnt].is_valid = 1;
-                    page_table[current_table_cnt].frame_number = page_number; // Assume page_number is also the frame_number
-                }
-                page_table[current_table_cnt].arrival_timestamp = timestamp;
-                page_table[current_table_cnt].last_access_timestamp = timestamp;
-                page_table[current_table_cnt].reference_count = 1;
-                current_table_cnt++; // Increment only after filling a slot
+            if (current_table_cnt < frame_cnt) {
+                // Free frame available
+                frameQueue[++rear] = page_number; // Store page index in the queue
+                page_table[page_number] = (struct PTE){1, page_number, timestamp, timestamp, 1};
+                current_table_cnt++;
             } else {
-                // No free frame or empty slots, replace the oldest page (FIFO)
+                // No free frame, replace the oldest page (FIFO) using the queue
                 int replaceIndex = frameQueue[front];
-                front = (front + 1) % table_cnt; // Use table_cnt as the queue size
+                front = (front + 1) % frame_cnt;
 
                 page_table[replaceIndex].frame_number = page_number;
                 page_table[replaceIndex].arrival_timestamp = timestamp;
                 page_table[replaceIndex].last_access_timestamp = timestamp;
                 page_table[replaceIndex].reference_count = 1;
                 frameQueue[rear] = replaceIndex; // Update queue with the replaced page's index
-                rear = (rear + 1) % table_cnt;
+                rear = (rear + 1) % frame_cnt;
             }
         }
+
         timestamp++;
     }
 
