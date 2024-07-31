@@ -72,16 +72,7 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
         timestamp++;
     }
 
-    // Adjust for test harness discrepancy
-    int initiallyLoadedPages = 0;
-    for (int i = 0; i < table_cnt; i++) {
-        if (page_table[i].is_valid) {
-            initiallyLoadedPages++;
-        }
-    }
-    if (initiallyLoadedPages > 0) {
-        faults -= initiallyLoadedPages; // Subtract the initial fault count
-    }
+
     return faults;
 }
 
