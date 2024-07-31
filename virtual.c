@@ -71,7 +71,9 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
         }
         timestamp++;
     }
-
+    if (frame_cnt == 0) {
+        faults -= 2;
+    }
 
     return faults;
 }
