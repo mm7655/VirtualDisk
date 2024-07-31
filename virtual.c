@@ -31,10 +31,8 @@ int process_page_access_fifo(struct PTE page_table[TABLEMAX], int *table_cnt, in
 }
 
 int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int reference_string[REFERENCEMAX], int reference_cnt, int frame_pool[POOLMAX], int frame_cnt) {
-    int   
- faults = 0;
-    int timestamp   
- = 1;
+    int faults = 0;
+    int timestamp = 1;
     int current_table_cnt = 0;
 
     for (int i = 0; i < reference_cnt; i++) {
