@@ -2,6 +2,7 @@
 
 // FIFO
 int process_page_access_fifo(struct PTE page_table[TABLEMAX], int *table_cnt, int page_number, int frame_pool[POOLMAX], int *frame_cnt, int current_timestamp) {
+
     for (int i = 0; i < *table_cnt; i++) {
         if (page_table[i].is_valid && page_table[i].frame_number == page_number) {
             page_table[i].last_access_timestamp = current_timestamp;
@@ -15,9 +16,10 @@ int process_page_access_fifo(struct PTE page_table[TABLEMAX], int *table_cnt, in
         page_table[page_number] = (struct PTE){1, frame, current_timestamp, current_timestamp, 1};
         return frame;
     } else {
-        int replaceIndex = 0;
-        for (int i = 1; i < *table_cnt; i++) {
-            if (page_table[i].arrival_timestamp < page_table[replaceIndex].arrival_timestamp) {
+        // Find the page with the earliest arrival time for replacement (not the current page)
+        int replaceIndex = -1;
+        for (int i = 0; i < *table_cnt; i++) {
+            if (page_table[i].is_valid && (replaceIndex == -1 || page_table[i].arrival_timestamp < page_table[replaceIndex].arrival_timestamp)) {
                 replaceIndex = i;
             }
         }
@@ -27,6 +29,7 @@ int process_page_access_fifo(struct PTE page_table[TABLEMAX], int *table_cnt, in
         return frame;
     }
 }
+
 
 int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int reference_string[REFERENCEMAX], int reference_cnt, int frame_pool[POOLMAX], int frame_cnt) {
     int faults = 0;
