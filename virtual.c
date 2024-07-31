@@ -34,7 +34,11 @@ int process_page_access_fifo(struct PTE page_table[TABLEMAX], int *table_cnt, in
 int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int reference_string[REFERENCEMAX], int reference_cnt, int frame_pool[POOLMAX], int frame_cnt) {
     int faults = 0;
     int timestamp = 1;
-    int current_table_cnt = 0;
+    int current_table_cnt = 0; 
+
+    // Queue to track the order of pages loaded into frames
+    int frameQueue[POOLMAX]; 
+    int front = 0, rear = -1;
 
     for (int i = 0; i < reference_cnt; i++) {
         int page_number = reference_string[i];
@@ -50,39 +54,34 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
         }
 
         if (!pageFound) {
-            faults++; // Increment faults only if page is not found
+            faults++; 
 
-            if (frame_cnt > 0) {
-                // Free frame available
-                int frame = frame_pool[--frame_cnt];
-                page_table[current_table_cnt++] = (struct PTE){1, frame, timestamp, timestamp, 1};
+            if (current_table_cnt < frame_cnt) { // there is an empty frame
+                // Load page into the next available frame
+                page_table[page_number].is_valid = 1;
+                page_table[page_number].frame_number = page_number;
+                page_table[page_number].arrival_timestamp = timestamp;
+                page_table[page_number].last_access_timestamp = timestamp;
+                page_table[page_number].reference_count = 1;
+                frameQueue[++rear] = page_number; // Add page to the rear of the queue
+                current_table_cnt++;
             } else {
-                // No free frame, replace oldest
-                int replaceIndex = 0;
-                for (int j = 1; j < current_table_cnt; j++) {
-                    if (page_table[j].arrival_timestamp < page_table[replaceIndex].arrival_timestamp) {
-                        replaceIndex = j;
-                    }
-                }
+                // No free frame, replace the oldest page (FIFO)
+                int replaceIndex = frameQueue[front];  // Get the oldest page from the queue
+                front = (front + 1) % frame_cnt;   // Move the front of the queue
+
                 page_table[replaceIndex].frame_number = page_number;
                 page_table[replaceIndex].arrival_timestamp = timestamp;
                 page_table[replaceIndex].last_access_timestamp = timestamp;
                 page_table[replaceIndex].reference_count = 1;
+                frameQueue[rear] = page_number; // Replace the oldest page in the queue
+                rear = (rear + 1) % frame_cnt;
             }
         }
+
         timestamp++;
     }
 
-    // Adjust for test harness discrepancy
-    int initiallyLoadedPages = 0;
-    for (int i = 0; i < table_cnt; i++) {
-        if (page_table[i].is_valid) {
-            initiallyLoadedPages++;
-        }
-    }
-    if (initiallyLoadedPages > 0) {
-        faults -= initiallyLoadedPages; // Subtract the initial fault count
-    }
     return faults;
 }
 
