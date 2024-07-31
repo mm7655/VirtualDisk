@@ -28,20 +28,53 @@ int process_page_access_fifo(struct PTE page_table[TABLEMAX], int *table_cnt, in
     }
 }
 
+
 int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int reference_string[REFERENCEMAX], int reference_cnt, int frame_pool[POOLMAX], int frame_cnt) {
     int faults = 0;
     int timestamp = 1;
-    int current_table_cnt = 0;
+    int current_table_cnt = table_cnt; // Initialize with table_cnt, not 0
 
     for (int i = 0; i < reference_cnt; i++) {
         int page_number = reference_string[i];
-        int frame = process_page_access_fifo(page_table, &current_table_cnt, page_number, frame_pool, &frame_cnt, timestamp++);
-        if (frame != page_number) {
+
+        // Mark pages already in memory as referenced
+        int pageFound = 0; // Flag to check if page is in memory
+        for (int j = 0; j < current_table_cnt; j++) {
+            if (page_table[j].is_valid && page_table[j].frame_number == page_number) {
+                page_table[j].last_access_timestamp = timestamp;
+                page_table[j].reference_count++;
+                pageFound = 1;
+                break;
+            }
+        }
+        if (pageFound == 1) {
+            timestamp++;
+            continue;
+        }
+
+        // Page not in memory, handle page fault
+        if (frame_cnt > 0) {
+            // Free frame available
+            int frame = frame_pool[--frame_cnt];
+            page_table[current_table_cnt++] = (struct PTE){1, frame, timestamp, timestamp, 1};
+            faults++;
+        } else {
+            // No free frame, replace oldest
+            int replaceIndex = 0;
+            for (int j = 1; j < current_table_cnt; j++) {
+                if (page_table[j].arrival_timestamp < page_table[replaceIndex].arrival_timestamp) {
+                    replaceIndex = j;
+                }
+            }
+            page_table[replaceIndex] = (struct PTE){1, page_table[replaceIndex].frame_number, timestamp, timestamp, 1}; 
             faults++;
         }
+        timestamp++;
     }
+
     return faults;
 }
+
 
 // LRU
 int process_page_access_lru(struct PTE page_table[TABLEMAX], int *table_cnt, int page_number, int frame_pool[POOLMAX], int *frame_cnt, int current_timestamp) {
