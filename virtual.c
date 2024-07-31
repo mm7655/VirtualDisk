@@ -68,8 +68,8 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
                     replaceIndex = j;
                 }
             }
-            // Correctly update the page table entry without creating a new entry
-            page_table[replaceIndex].is_valid = 1;
+
+            // Correct the replacement logic for page_table array indexes
             page_table[replaceIndex].frame_number = page_number;
             page_table[replaceIndex].arrival_timestamp = timestamp;
             page_table[replaceIndex].last_access_timestamp = timestamp;
