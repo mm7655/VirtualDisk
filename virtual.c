@@ -2,7 +2,9 @@
 
 // FIFO
 int process_page_access_fifo(struct PTE page_table[TABLEMAX], int *table_cnt, int page_number, int frame_pool[POOLMAX], int *frame_cnt, int current_timestamp) {
-    for (int i = 0; i < TABLEMAX; i++) { // Check the entire page table
+
+    // Check if the page is already in the page table
+    for (int i = 0; i < TABLEMAX; i++) {
         if (page_table[i].is_valid && page_table[i].frame_number == page_number) {
             page_table[i].last_access_timestamp = current_timestamp;
             page_table[i].reference_count++;
@@ -10,9 +12,11 @@ int process_page_access_fifo(struct PTE page_table[TABLEMAX], int *table_cnt, in
         }
     }
 
+    // Handle Page Fault
     if (*frame_cnt > 0) {
+        // Free frame available
         int frame = frame_pool[--(*frame_cnt)];
-        // Update existing page table entry instead of the page number itself
+        // Find the first available empty slot in the page table and insert the new page
         for (int i = 0; i < TABLEMAX; i++) {
             if (!page_table[i].is_valid) {
                 page_table[i] = (struct PTE){1, frame, current_timestamp, current_timestamp, 1};
@@ -22,20 +26,20 @@ int process_page_access_fifo(struct PTE page_table[TABLEMAX], int *table_cnt, in
         }
     } else {
         // No free frame, replace the oldest page (FIFO)
-        int replaceIndex = -1;
-        for (int i = 0; i < TABLEMAX; i++) { // Check the entire page table for the oldest valid entry
-            if (page_table[i].is_valid && (replaceIndex == -1 || page_table[i].arrival_timestamp < page_table[replaceIndex].arrival_timestamp)) {
+        int replaceIndex = 0;
+        // Find the oldest valid entry in the page table
+        for (int i = 1; i < TABLEMAX; i++) {
+            if (page_table[i].is_valid && page_table[i].arrival_timestamp < page_table[replaceIndex].arrival_timestamp) {
                 replaceIndex = i;
             }
         }
         int frame = page_table[replaceIndex].frame_number;
-
-        // *** Key Fix: Correctly update page table entry for the replaced page ***
-        page_table[replaceIndex] = (struct PTE){1, page_number, current_timestamp, current_timestamp, 1}; // replace the page
-
-        return frame; // Return the frame number of the replaced page
+        // Replace the page in the page table
+        page_table[replaceIndex] = (struct PTE){1, page_number, current_timestamp, current_timestamp, 1};
+        return frame;
     }
 }
+
 
 
 int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int reference_string[REFERENCEMAX], int reference_cnt, int frame_pool[POOLMAX], int frame_cnt) {
