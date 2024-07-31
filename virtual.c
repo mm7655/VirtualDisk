@@ -36,20 +36,19 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
     int timestamp = 1;
     int current_table_cnt = 0;
 
-    // Check how many pages are already loaded in the page table and adjust the fault count
-    int initiallyLoadedPages = 0;
+    // Count initial faults for pages already in memory
     for (int i = 0; i < table_cnt; i++) {
         if (page_table[i].is_valid) {
-            initiallyLoadedPages++;
-            current_table_cnt++; // Track the number of valid pages
+            faults++; // Count as initial fault
+            current_table_cnt++; // Increment valid page count
+            // No need to update timestamps here, as the initial pages are already loaded
         }
     }
-    faults = initiallyLoadedPages; // Start with the number of initially loaded pages as faults
 
     for (int i = 0; i < reference_cnt; i++) {
         int page_number = reference_string[i];
+        int pageFound = 0; // Reset pageFound for each new page reference
 
-        int pageFound = 0;
         for (int j = 0; j < current_table_cnt; j++) {
             if (page_table[j].is_valid && page_table[j].frame_number == page_number) {
                 page_table[j].last_access_timestamp = timestamp;
@@ -60,9 +59,8 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
         }
 
         if (!pageFound) {
-            // Additional fault due to the new page not being in memory
-            faults++; // Increment only for additional faults beyond the initial ones
-            
+            faults++;
+
             if (frame_cnt > 0) {
                 // Free frame available
                 int frame = frame_pool[--frame_cnt];
@@ -75,6 +73,8 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
                         replaceIndex = j;
                     }
                 }
+
+                // Update the replaced page's entry (not the next empty one)
                 page_table[replaceIndex].frame_number = page_number;
                 page_table[replaceIndex].arrival_timestamp = timestamp;
                 page_table[replaceIndex].last_access_timestamp = timestamp;
