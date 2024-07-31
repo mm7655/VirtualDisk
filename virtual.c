@@ -32,13 +32,13 @@ int process_page_access_fifo(struct PTE page_table[TABLEMAX], int *table_cnt, in
 int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int reference_string[REFERENCEMAX], int reference_cnt, int frame_pool[POOLMAX], int frame_cnt) {
     int faults = 0;
     int timestamp = 1;
-    int current_table_cnt = table_cnt; // Initialize with table_cnt, not 0
+    int current_table_cnt = table_cnt; // Initialize with the initial table count
 
     for (int i = 0; i < reference_cnt; i++) {
         int page_number = reference_string[i];
 
         // Mark pages already in memory as referenced
-        int pageFound = 0; // Flag to check if page is in memory
+        int pageFound = 0; 
         for (int j = 0; j < current_table_cnt; j++) {
             if (page_table[j].is_valid && page_table[j].frame_number == page_number) {
                 page_table[j].last_access_timestamp = timestamp;
@@ -66,7 +66,12 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
                     replaceIndex = j;
                 }
             }
-            page_table[replaceIndex] = (struct PTE){1, page_table[replaceIndex].frame_number, timestamp, timestamp, 1}; 
+            // Correctly update the page table entry without creating a new entry
+            page_table[replaceIndex].is_valid = 1;
+            page_table[replaceIndex].frame_number = page_number;
+            page_table[replaceIndex].arrival_timestamp = timestamp;
+            page_table[replaceIndex].last_access_timestamp = timestamp;
+            page_table[replaceIndex].reference_count = 1;
             faults++;
         }
         timestamp++;
@@ -74,6 +79,7 @@ int count_page_faults_fifo(struct PTE page_table[TABLEMAX], int table_cnt, int r
 
     return faults;
 }
+
 
 
 // LRU
