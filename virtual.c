@@ -168,7 +168,7 @@ int count_page_faults_lfu(struct PTE page_table[TABLEMAX], int table_cnt, int re
         int page_number = reference_string[i];
 
         int pageFound = 0;
-        for (int j = 0; j < current_table_cnt; j++) { 
+        for (int j = 0; j < TABLEMAX; j++) { // Check the entire page table
             if (page_table[j].is_valid && page_table[j].frame_number == page_number) {
                 page_table[j].last_access_timestamp = timestamp;
                 page_table[j].reference_count++;
@@ -182,28 +182,23 @@ int count_page_faults_lfu(struct PTE page_table[TABLEMAX], int table_cnt, int re
 
             if (current_table_cnt < frame_cnt) {
                 // Free frame available
-                page_table[page_number].is_valid = 1;
-                page_table[page_number].frame_number = page_number; // Assume page_number is also the frame_number when frame_pool is empty
-                page_table[page_number].arrival_timestamp = timestamp;
-                page_table[page_number].last_access_timestamp = timestamp;
-                page_table[page_number].reference_count = 1;
+                page_table[page_number] = (struct PTE){1, page_number, timestamp, timestamp, 1};
                 current_table_cnt++;
             } else {
                 // No free frame, replace the LFU page
-                int replaceIndex = 0;
-                for (int j = 1; j < current_table_cnt; j++) { 
-                    if (page_table[j].reference_count < page_table[replaceIndex].reference_count ||
+                int replaceIndex = -1;
+                for (int j = 0; j < TABLEMAX; j++) { // Check the entire page table
+                    if (!page_table[j].is_valid) {
+                        continue; // Skip invalid entries
+                    }
+                    if (replaceIndex == -1 || 
+                        page_table[j].reference_count < page_table[replaceIndex].reference_count ||
                         (page_table[j].reference_count == page_table[replaceIndex].reference_count &&
-                        page_table[j].arrival_timestamp < page_table[replaceIndex].arrival_timestamp)) {
+                         page_table[j].arrival_timestamp < page_table[replaceIndex].arrival_timestamp)) {
                         replaceIndex = j;
                     }
                 }
-
-                // Correctly update the replaced page's entry (not the next empty one)
-                page_table[replaceIndex].frame_number = page_number;
-                page_table[replaceIndex].arrival_timestamp = timestamp;
-                page_table[replaceIndex].last_access_timestamp = timestamp;
-                page_table[replaceIndex].reference_count = 1;
+                page_table[replaceIndex] = (struct PTE){1, page_number, timestamp, timestamp, 1}; 
             }
         }
         timestamp++;
@@ -211,4 +206,3 @@ int count_page_faults_lfu(struct PTE page_table[TABLEMAX], int table_cnt, int re
 
     return faults;
 }
-
