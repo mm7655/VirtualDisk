@@ -130,7 +130,7 @@ int process_page_access_lfu(struct PTE page_table[TABLEMAX], int *table_cnt, int
         if (page_table[i].is_valid && page_table[i].frame_number == page_number) {
             page_table[i].last_access_timestamp = current_timestamp;
             page_table[i].reference_count++;
-            return page_number;
+            return page_table[i].frame_number;  // Return the correct frame_number
         }
     }
 
@@ -139,20 +139,25 @@ int process_page_access_lfu(struct PTE page_table[TABLEMAX], int *table_cnt, int
         page_table[page_number] = (struct PTE){1, frame, current_timestamp, current_timestamp, 1};
         return frame;
     } else {
-        int replaceIndex = 0;
-        for (int i = 1; i < *table_cnt; i++) {
-            if (page_table[i].reference_count < page_table[replaceIndex].reference_count ||
+        // No free frame, replace the LFU page
+        int replaceIndex = -1;
+        for (int i = 0; i < TABLEMAX; i++) { // Check the entire page table
+            if (!page_table[i].is_valid) {
+                continue; // Skip invalid entries
+            }
+            if (replaceIndex == -1 || 
+                page_table[i].reference_count < page_table[replaceIndex].reference_count ||
                 (page_table[i].reference_count == page_table[replaceIndex].reference_count &&
                  page_table[i].arrival_timestamp < page_table[replaceIndex].arrival_timestamp)) {
-                replaceIndex = i;
+                replaceIndex = i; // Update replaceIndex if LFU or earliest loaded
             }
         }
         int frame = page_table[replaceIndex].frame_number;
-        page_table[replaceIndex] = (struct PTE){0, -1, -1, -1, -1};
-        page_table[page_number] = (struct PTE){1, frame, current_timestamp, current_timestamp, 1};
+        page_table[replaceIndex] = (struct PTE){1, page_number, current_timestamp, current_timestamp, 1}; 
         return frame;
     }
 }
+
 
 int count_page_faults_lfu(struct PTE page_table[TABLEMAX], int table_cnt, int reference_string[REFERENCEMAX], int reference_cnt, int frame_pool[POOLMAX], int frame_cnt) {
     int faults = 0;
