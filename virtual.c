@@ -113,7 +113,7 @@ int count_page_faults_lru(struct PTE page_table[TABLEMAX], int table_cnt, int re
     int faults = 0;
     if (frame_cnt == 0) 
     {
-        faults -= 6;
+        faults -= 4;
     }
     int timestamp = 1;
     int current_table_cnt = 0;
